@@ -1,5 +1,7 @@
 package basedatos;
 
+import video_club.Pelicula;
+
 import java.sql.*;
 
 /**
@@ -86,5 +88,21 @@ public class Consulta {
             }
         }
     }
+    // Datos temporales, sirve como prueba mientras no esta listo la conexion a
+    // la base de datos
+    public Pelicula[] buscarPorTitulo() {
+        Pelicula[] resultados = new Pelicula[3];
+        
+        String[] actores1 = {"Actor1", "Actor2", "Actor3"};
+        String[] actores2 = {"Actor4", "Actor5", "Actor6"};
+        String[] actores3 = {"Actor7", "Actor8", "Actor9"};
+
+        resultados[0] = new Pelicula("Comedia", "Pelicula1", actores1, "Director1", 5, "Disponible");
+        resultados[1] = new Pelicula("Drama", "Pelicula2", actores2, "Director2", 3, "En préstamo");
+        resultados[2] = new Pelicula("Acción", "Pelicula3", actores3, "Director3", 7, "Disponible");
+
+        return resultados;
+    }
+
 
 }
