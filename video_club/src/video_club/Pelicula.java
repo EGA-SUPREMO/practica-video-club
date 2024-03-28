@@ -14,7 +14,7 @@ public class Pelicula {
     public String titulo;
     public String[] actores;
     public String director;
-    public int cintas_disponibles;
+    public String cintas_disponibles;
     public String estado;
     
     public Pelicula(String genero, String titulo, String[] actores,

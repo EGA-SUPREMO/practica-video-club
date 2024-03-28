@@ -11,41 +11,14 @@ SELECT *
 FROM socio
 WHERE id = 'cedula_del_socio';
 
+borrar cuenta
+
+quitar 90 al socio actual
 
 -- Para consultas del buscador
-SELECT *
-FROM pelicula
-WHERE titulo = 'título_de_la_pelicula';
+*hecho
 
-SELECT p.*
-FROM pelicula p
-JOIN genero g ON p.id_genero = g.id
-WHERE g.nombre = 'terror';
-
-SELECT p.*
-FROM pelicula p
-JOIN actores_en_peliculas ap ON p.id = ap.id_pelicula
-JOIN actor a ON ap.id_actor = a.id
-WHERE a.nombre = 'nombre_del_actor';
-
-SELECT p.*
-FROM pelicula p
-JOIN director d ON p.id_director = d.id
-WHERE d.nombre = 'nombre_del_director';
-
--- para cuando se muestra en las busquedas, tiene dos vars de input(el id de la pelicula), en la columna de cintas disponibles
-SELECT COUNT(*) AS num_cintas_disponibles
-FROM cinta
-WHERE id_pelicula = 4 AND id NOT IN 
-(
-    SELECT cinta.id
-    FROM cinta
-    JOIN prestamo_cinta ON cinta.id = prestamo_cinta.id_cinta
-    JOIN prestamo ON prestamo_cinta.id_prestamo = prestamo.id
-    JOIN pelicula ON cinta.id_pelicula = pelicula.id
-    WHERE pelicula.id = 4 AND prestamo.fecha_devuelta IS NULL
-);
-
+-- ver lista de espera
 
  * @author alejandro
  */
@@ -66,12 +39,15 @@ public class Consulta {
             Consulta consulta = new Consulta(url, username, password);
             System.out.println("Connected to the database!");
 
-            Pelicula peli = consulta.buscarPorTitulo("Silent words")[0];
+            Pelicula peli = consulta.buscarPorTitulo("The Godfather")[0];
+            //Pelicula peli = consulta.buscarPorGenero("Drama")[0];
+            //System.out.println(consulta.buscarPorGenero("Drama").length);
 
             System.out.println(peli.genero);
             System.out.println(peli.director);
             System.out.println(peli.actores[0]);
             System.out.println(peli.actores[1]);
+            System.out.println(peli.cintas_disponibles);
 
             if (consulta.connection != null) {
                 consulta.connection.close();
@@ -79,21 +55,6 @@ public class Consulta {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-    // Datos temporales, sirve como prueba mientras no esta listo la conexion a
-    // la base de datos
-    public Pelicula[] buscarPorTitulo() {
-        Pelicula[] resultados = new Pelicula[3];
-        
-        String[] actores1 = {"Actor1", "Actor2", "Actor3"};
-        String[] actores2 = {"Actor4", "Actor5", "Actor6"};
-        String[] actores3 = {"Actor7", "Actor8", "Actor9"};
-
-        resultados[0] = new Pelicula("Comedia", "Pelicula1", actores1, "Director1");
-        resultados[1] = new Pelicula("Drama", "Pelicula2", actores2, "Director2" );
-        resultados[2] = new Pelicula("Acción", "Pelicula3", actores3, "Director3");
-
-        return resultados;
     }
 
     private Pelicula[] buscarPorTitulo(String titulo) throws SQLException {
@@ -167,6 +128,20 @@ public class Consulta {
         }
     }
 
+    private String cintas_disponiblesPorPeliculaId(int id) throws SQLException {
+        String sql = "SELECT COUNT(*) AS num_cintas_disponibles FROM cinta WHERE id_pelicula = ? AND id NOT IN (SELECT cinta.id FROM cinta JOIN prestamo_cinta ON cinta.id = prestamo_cinta.id_cinta JOIN prestamo ON prestamo_cinta.id_prestamo = prestamo.id JOIN pelicula ON cinta.id_pelicula = pelicula.id WHERE pelicula.id = 4 AND prestamo.fecha_devuelta IS NULL );";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, id+"");
+            ResultSet rs = statement.executeQuery();
+            if (rs.next()) {
+                return rs.getString("num_cintas_disponibles");
+            } else {
+                return "No se encontro";
+            }
+        }
+    }
+
     private String[] buscarActoresPorPeliculaId(int id) throws SQLException {
         String sql = "SELECT a.nombre FROM actores_en_peliculas ap JOIN actor a ON ap.id_actor = a.id WHERE ap.id_pelicula = ?";
         
@@ -193,13 +168,12 @@ public class Consulta {
             String id_pelicula = resultSet.getString("id");
             String genero_id = resultSet.getString("id_genero");
             String id_director = resultSet.getString("id_director");
-            System.out.println(id_pelicula);
-            
             String genero = buscarGeneroPorId(Integer.parseInt(genero_id));
             String director = buscarDirectorPorId(Integer.parseInt(id_director));
             String[] actores = buscarActoresPorPeliculaId(Integer.parseInt(id_pelicula));
 
             peliculas[index] = new Pelicula(genero, titulo, actores, director);
+            peliculas[index].cintas_disponibles = cintas_disponiblesPorPeliculaId(Integer.parseInt(id_pelicula));
             index++;
         }
         
