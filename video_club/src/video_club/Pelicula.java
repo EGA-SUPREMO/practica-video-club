@@ -18,13 +18,11 @@ public class Pelicula {
     public String estado;
     
     public Pelicula(String genero, String titulo, String[] actores,
-                String director, int cintas_disponibles, String estado) {
+                String director) {
         this.genero = genero;
         this.titulo = titulo;
         this.actores = actores;
         this.director = director;
-        this.cintas_disponibles = cintas_disponibles;
-        this.estado = estado;
     }
 
 }
