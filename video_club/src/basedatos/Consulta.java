@@ -53,28 +53,27 @@ public class Consulta {
 
     public static void main(String[] args) {
         Connection connection = null;
+        
+        String url = "jdbc:mariadb://localhost:3306/video_club";
+        String username = "trabajo";
+        String password = "1234";
+          
         try {
-            // Load the MySQL JDBC driver
-            Class.forName("com.mysql.cj.jdbc.Driver");
-
-            // Connect to the database
-            String url = "jdbc:mysql://localhost:3306/your_database_name";
-            String username = "trabajo";
-            String password = "1234";
             connection = DriverManager.getConnection(url, username, password);
-
-            // Execute a query
+            System.out.println("Connected to the database!");
+              // Execute a query
             Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM your_table_name");
-
+            ResultSet resultSet = statement.executeQuery("SELECT * FROM actor");
+            System.out.println(resultSet);
             // Process the results
             while (resultSet.next()) {
                 // Retrieve data from the result set
-                String column1 = resultSet.getString("column1");
-                int column2 = resultSet.getInt("column2");
+                int actorId = resultSet.getInt("id");
+                String firstName = resultSet.getString("nombre");
+                
 
                 // Process the data
-                System.out.println("Column 1: " + column1 + ", Column 2: " + column2);
+                System.out.println("Column 1: " + actorId + ", Column 2: " + firstName);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -97,9 +96,9 @@ public class Consulta {
         String[] actores2 = {"Actor4", "Actor5", "Actor6"};
         String[] actores3 = {"Actor7", "Actor8", "Actor9"};
 
-        resultados[0] = new Pelicula("Comedia", "Pelicula1", actores1, "Director1", 5, "Disponible");
-        resultados[1] = new Pelicula("Drama", "Pelicula2", actores2, "Director2", 3, "En préstamo");
-        resultados[2] = new Pelicula("Acción", "Pelicula3", actores3, "Director3", 7, "Disponible");
+        resultados[0] = new Pelicula("Comedia", "Pelicula1", actores1, "Director1");
+        resultados[1] = new Pelicula("Drama", "Pelicula2", actores2, "Director2" );
+        resultados[2] = new Pelicula("Acción", "Pelicula3", actores3, "Director3");
 
         return resultados;
     }
