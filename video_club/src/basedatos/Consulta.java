@@ -50,41 +50,34 @@ WHERE id_pelicula = 4 AND id NOT IN
  * @author alejandro
  */
 public class Consulta {
+    Connection connection;
+    
+    public Consulta(String url, String username, String password) throws SQLException {
+        connection = DriverManager.getConnection(url, username, password);
+    }
 
     public static void main(String[] args) {
-        Connection connection = null;
         
         String url = "jdbc:mariadb://localhost:3306/video_club";
         String username = "trabajo";
         String password = "1234";
-          
-        try {
-            connection = DriverManager.getConnection(url, username, password);
-            System.out.println("Connected to the database!");
-              // Execute a query
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM actor");
-            System.out.println(resultSet);
-            // Process the results
-            while (resultSet.next()) {
-                // Retrieve data from the result set
-                int actorId = resultSet.getInt("id");
-                String firstName = resultSet.getString("nombre");
-                
 
-                // Process the data
-                System.out.println("Column 1: " + actorId + ", Column 2: " + firstName);
+        try {
+            Consulta consulta = new Consulta(url, username, password);
+            System.out.println("Connected to the database!");
+
+            Pelicula peli = consulta.buscarPorTitulo("Silent words")[0];
+
+            System.out.println(peli.genero);
+            System.out.println(peli.director);
+            System.out.println(peli.actores[0]);
+            System.out.println(peli.actores[1]);
+
+            if (consulta.connection != null) {
+                consulta.connection.close();
             }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
     }
     // Datos temporales, sirve como prueba mientras no esta listo la conexion a
@@ -103,5 +96,116 @@ public class Consulta {
         return resultados;
     }
 
+    private Pelicula[] buscarPorTitulo(String titulo) throws SQLException {
+        String sql = "SELECT * FROM pelicula WHERE titulo = ?";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, titulo);
+            ResultSet resultSet = statement.executeQuery();
+            
+            return mapResultSetToPeliculas(resultSet);
+        }
+    }
+    
+    private Pelicula[] buscarPorGenero(String genero) throws SQLException {
+        String sql = "SELECT p.* FROM pelicula p JOIN genero g ON p.id_genero = g.id WHERE g.nombre = ?";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, genero);
+            ResultSet resultSet = statement.executeQuery();
+            
+            return mapResultSetToPeliculas(resultSet);
+        }
+    }
+    
+    private Pelicula[] buscarPorActor(String nombreActor) throws SQLException {
+        String sql = "SELECT p.* FROM pelicula p JOIN actores_en_peliculas ap ON p.id = ap.id_pelicula " +
+                     "JOIN actor a ON ap.id_actor = a.id WHERE a.nombre = ?";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, nombreActor);
+            ResultSet resultSet = statement.executeQuery();
+            
+            return mapResultSetToPeliculas(resultSet);
+        }
+    }
+    
+    private Pelicula[] buscarPorDirector(String nombreDirector) throws SQLException {
+        String sql = "SELECT p.* FROM pelicula p JOIN director d ON p.id_director = d.id WHERE d.nombre = ?";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, nombreDirector);
+            ResultSet resultSet = statement.executeQuery();
+            
+            return mapResultSetToPeliculas(resultSet);
+        }
+    }
+    private String buscarGeneroPorId(int id) throws SQLException {
+        String sql = "SELECT genero.nombre FROM genero WHERE genero.id = ?";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, id+"");
+            ResultSet rs = statement.executeQuery();
+            if (rs.next()) {
+                return rs.getString("nombre");
+            } else {
+                return "No se encontro";
+            }
+        }
+    }
+    private String buscarDirectorPorId(int id) throws SQLException {
+        String sql = "SELECT director.nombre FROM director WHERE director.id = ?";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, id+"");
+            ResultSet rs = statement.executeQuery();
+            if (rs.next()) {
+                return rs.getString("nombre");
+            } else {
+                return "No se encontro";
+            }
+        }
+    }
 
+    private String[] buscarActoresPorPeliculaId(int id) throws SQLException {
+        String sql = "SELECT a.nombre FROM actores_en_peliculas ap JOIN actor a ON ap.id_actor = a.id WHERE ap.id_pelicula = ?";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, id+"");
+            ResultSet rs = statement.executeQuery();
+            String[] nombresActores = new String[99];
+            int i = 0;
+            while (rs.next()) {
+                nombresActores[i] = rs.getString("nombre");
+                i++;
+            }
+
+            return nombresActores;
+        }
+    }
+    
+    private Pelicula[] mapResultSetToPeliculas(ResultSet resultSet) throws SQLException {
+        Pelicula[] peliculas = new Pelicula[100];
+        int index = 0;
+        
+        while (resultSet.next()) {
+            String titulo = resultSet.getString("titulo");
+            String id_pelicula = resultSet.getString("id");
+            String genero_id = resultSet.getString("id_genero");
+            String id_director = resultSet.getString("id_director");
+            System.out.println(id_pelicula);
+            
+            String genero = buscarGeneroPorId(Integer.parseInt(genero_id));
+            String director = buscarDirectorPorId(Integer.parseInt(id_director));
+            String[] actores = buscarActoresPorPeliculaId(Integer.parseInt(id_pelicula));
+
+            peliculas[index] = new Pelicula(genero, titulo, actores, director);
+            index++;
+        }
+        
+        Pelicula[] resultadoFinal = new Pelicula[index];
+        System.arraycopy(peliculas, 0, resultadoFinal, 0, index);
+        
+        return resultadoFinal;
+    }
 }
