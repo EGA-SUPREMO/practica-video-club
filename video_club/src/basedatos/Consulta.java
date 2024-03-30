@@ -10,10 +10,10 @@ import java.sql.*;
  * 
  * -- Rentar
  * quitar 90 al socio por id se usa el metodo restarSaldo()
- * TODO metodo para rentar no existe, haria que si la cintas disponibles son 0, se agrega a la lista de espera, si no, se agrega a la lista de prestamo con fecha devuelta null
- * si no hay
+ * TODO metodo para rentar no existe, se haria que si la cintas disponibles son 0, se agrega a la lista de espera, si no, se agrega a la lista de prestamo con fecha devuelta null, pueden comprobar si hay cintas o no usando cintas_disponiblesPorPeliculaId(), devuelve un string y pide un int para la id de pelicula, conviertanlo a int
+ * si no hay cintas disponibles
  * agregarListaDeEspera()
- * si hay
+ * si hay cintas disponibles
  * usa el metodo: rentarPelicula()
  * 
  * -- ver lista de espera, se pide id de socio y devuelve un array de pelicula con los valores titulo y estado predefinidos
@@ -32,6 +32,7 @@ public class Consulta {
     }
 
     // TODO esto esta de ejemplo de como hay que abrir la conexion, cuando terminen todo lo demas, borren este metodo que esta de mas
+    // TODO el codigo comentado es para cuando estaba haciendo pruebas, actualmente no aporta nada, decidi no borrarlo por si querian hacer pruebas udts 
     public static void main(String[] args) {
         
         String url = "jdbc:mariadb://localhost:3306/video_club";
@@ -42,7 +43,7 @@ public class Consulta {
             Consulta consulta = new Consulta(url, usuario, contrasena);
             System.out.println("Conectado a la base de datos!");
 
-            Pelicula peli = consulta.buscarPorTitulo("godfather")[0];
+            //Pelicula peli = consulta.buscarPorTitulo("godfather")[0];
             //Pelicula peli = consulta.buscarPorGenero("Drama")[0];
             //System.out.println(consulta.buscarPorGenero("Drama").length);
             //System.out.println(consulta.obtenerSocio(2)[0]);
@@ -50,19 +51,20 @@ public class Consulta {
             System.out.println(consulta.restarSaldo(2));
             consulta.borrarCuenta(2);
             System.out.println(consulta.obtenerSocio(2));
-            */System.out.println(peli.titulo);
-            consulta.agregarPrestamo(2, 2);/*
+            System.out.println(peli.titulo);
+            consulta.rentarPelicula(2, 2);
+            /*consulta.agregarPrestamo(2, 2);/*
             System.out.println(peli.director);
             System.out.println(peli.actores[0]);
             System.out.println(peli.actores[1]);
             System.out.println(peli.cintas_disponibles);
-            */
+            
             Pelicula[] pelis = consulta.obtenerListaEsperaDeSocio(2);
             for (Pelicula pelicula : pelis) {
                 System.out.println("Titulo: " + pelicula.titulo);
                 System.out.println("Estado: " + pelicula.estado);
                 System.out.println();
-            }
+            }*/
 
             if (consulta.conexion != null) {
                 consulta.conexion.close();
@@ -101,7 +103,6 @@ public class Consulta {
         }
     }
 
-    // hacerlo por orden, en espera, rentadas, devueltas
     public Pelicula[] obtenerListaEsperaDeSocio(int idSocio) {
         Pelicula[] peliculas, peliculasDevueltas = new Pelicula[100], peliculasPorDevolver = new Pelicula[100], peliculasEnEspera = new Pelicula[100];
         String sql_devueltas = "SELECT p.titulo FROM prestamo pr JOIN prestamo_cinta pc ON pr.id = pc.id_prestamo JOIN cinta c ON pc.id_cinta = c.id JOIN pelicula p ON c.id_pelicula = p.id WHERE pr.id_socio = ? AND pr.fecha_devuelta IS NOT NULL;";
@@ -133,10 +134,8 @@ public class Consulta {
         int i = 0;
         System.arraycopy(peliculasEnEspera, 0, peliculas, i, peliculasEnEspera.length);
         i += peliculasEnEspera.length;
-
         System.arraycopy(peliculasPorDevolver, 0, peliculas, i, peliculasPorDevolver.length);
         i += peliculasPorDevolver.length;
-
         System.arraycopy(peliculasDevueltas, 0, peliculas, i, peliculasDevueltas.length);
 
         return peliculas;
@@ -177,9 +176,21 @@ public class Consulta {
     }
 
     public void rentarPelicula(int id_pelicula, int id_socio) {
-        String sql = "SELECT cinta.id FROM cinta JOIN pelicula ON cinta.id_pelicula = pelicula.id WHERE pelicula.id = ?"
-
-        agregarPrestamo(, id_socio);
+        String sql = "SELECT cinta.id FROM cinta WHERE id_pelicula = ? AND id NOT IN ( SELECT cinta.id FROM cinta JOIN prestamo_cinta ON cinta.id = prestamo_cinta.id_cinta JOIN prestamo ON prestamo_cinta.id_prestamo = prestamo.id JOIN pelicula ON cinta.id_pelicula = pelicula.id WHERE pelicula.id = ? AND prestamo.fecha_devuelta IS NULL );";
+        int id_cinta;
+        try (PreparedStatement statement = conexion.prepareStatement(sql)) {
+            statement.setInt(1, id_pelicula);
+            statement.setInt(2, id_pelicula);
+            ResultSet resultSet = statement.executeQuery();
+            
+            if (resultSet.next()) {
+                id_cinta = resultSet.getInt("id");
+                agregarPrestamo(id_cinta, id_socio);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        
     }
 
     private void agregarPrestamo(int id_cinta, int id_socio) {
@@ -303,7 +314,7 @@ public class Consulta {
         }
     }
 
-    private String cintas_disponiblesPorPeliculaId(int id) throws SQLException {
+    public String cintas_disponiblesPorPeliculaId(int id) throws SQLException {
         String sql = "SELECT COUNT(*) AS num_cintas_disponibles FROM cinta WHERE id_pelicula = ? AND id NOT IN (SELECT cinta.id FROM cinta JOIN prestamo_cinta ON cinta.id = prestamo_cinta.id_cinta JOIN prestamo ON prestamo_cinta.id_prestamo = prestamo.id JOIN pelicula ON cinta.id_pelicula = pelicula.id WHERE pelicula.id = ? AND prestamo.fecha_devuelta IS NULL );";
         
         try (PreparedStatement statement = conexion.prepareStatement(sql)) {
