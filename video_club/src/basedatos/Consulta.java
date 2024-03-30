@@ -7,10 +7,12 @@ import java.sql.*;
 /**
  * -- Inicio de sesion
  * usa obtenerSocio()
+ * 
+ * -- Rentar
  * quitar 90 al socio por id se usa el metodo restarSaldo()
  * TODO metodo para rentar no existe, haria que si la cintas disponibles son 0, se agrega a la lista de espera, si no, se agrega a la lista de prestamo con fecha devuelta null
  * 
- * -- ver lista de espera, se pide id de socio y se muestra, titulo y estado
+ * -- ver lista de espera, se pide id de socio y devuelve un array de pelicula con los valores titulo y estado predefinidos
  * Usar: obtenerListaEsperaDeSocio(id del socio)
  * 
  * -- Para consultas del buscador
@@ -25,6 +27,7 @@ public class Consulta {
         conexion = DriverManager.getConnection(url, usuario, contrasena);
     }
 
+    // TODO esto esta de ejemplo de como hay que abrir la conexion, cuando terminen todo lo demas, borren este metodo que esta de mas
     public static void main(String[] args) {
         
         String url = "jdbc:mariadb://localhost:3306/video_club";
@@ -32,10 +35,10 @@ public class Consulta {
         String contrasena = "1234";
 
         try {
-            Consulta consulta = new Consulta(url, username, contrasena);
-            System.out.println("Connected to the database!");
+            Consulta consulta = new Consulta(url, usuario, contrasena);
+            System.out.println("Conectado a la base de datos!");
 
-            Pelicula peli = consulta.buscarPorTitulo("The Godfather")[0];
+            Pelicula peli = consulta.buscarPorTitulo("godfather")[0];
             //Pelicula peli = consulta.buscarPorGenero("Drama")[0];
             //System.out.println(consulta.buscarPorGenero("Drama").length);
             //System.out.println(consulta.obtenerSocio(2)[0]);
@@ -43,7 +46,7 @@ public class Consulta {
             System.out.println(consulta.restarSaldo(2));
             consulta.borrarCuenta(2);
             System.out.println(consulta.obtenerSocio(2));
-            System.out.println(peli.genero);
+            */System.out.println(peli.titulo);/*
             System.out.println(peli.director);
             System.out.println(peli.actores[0]);
             System.out.println(peli.actores[1]);
@@ -55,6 +58,7 @@ public class Consulta {
                 System.out.println("Estado: " + pelicula.estado);
                 System.out.println();
             }
+
             if (consulta.conexion != null) {
                 consulta.conexion.close();
             }
@@ -165,10 +169,10 @@ public class Consulta {
     }
 
     public Pelicula[] buscarPorTitulo(String titulo) throws SQLException {
-        String sql = "SELECT * FROM pelicula WHERE titulo = ?";
+        String sql = "SELECT * FROM pelicula WHERE LOWER(titulo) LIKE LOWER(?)";
         
         try (PreparedStatement statement = conexion.prepareStatement(sql)) {
-            statement.setString(1, titulo);
+            statement.setString(1, "%" + titulo + "%");
             ResultSet resultSet = statement.executeQuery();
             
             return mappearResultSetParaPeliculas(resultSet);
