@@ -12,9 +12,9 @@ import java.sql.*;
  * quitar 90 al socio por id se usa el metodo restarSaldo()
  * TODO metodo para rentar no existe, haria que si la cintas disponibles son 0, se agrega a la lista de espera, si no, se agrega a la lista de prestamo con fecha devuelta null
  * si no hay
- * lista de espera(hecho)
+ * agregarListaDeEspera()
  * si hay
- * prestamo + prestamo cinta
+ * usa el metodo: rentarPelicula()
  * 
  * -- ver lista de espera, se pide id de socio y devuelve un array de pelicula con los valores titulo y estado predefinidos
  * Usar: obtenerListaEsperaDeSocio(id del socio)
@@ -51,7 +51,7 @@ public class Consulta {
             consulta.borrarCuenta(2);
             System.out.println(consulta.obtenerSocio(2));
             */System.out.println(peli.titulo);
-            consulta.agregarListaEspera(2, 2);/*
+            consulta.agregarPrestamo(2, 2);/*
             System.out.println(peli.director);
             System.out.println(peli.actores[0]);
             System.out.println(peli.actores[1]);
@@ -163,7 +163,7 @@ public class Consulta {
         return socio;
     }
 
-    private void agregarListaEspera(int id_pelicula, int id_socio) {
+    public void agregarListaEspera(int id_pelicula, int id_socio) {
         String sql = "INSERT INTO lista_espera (id_pelicula, id_socio, fecha) VALUES (?, ?, ?)";
         
         try (PreparedStatement statement = conexion.prepareStatement(sql)) {
@@ -175,24 +175,52 @@ public class Consulta {
 
         } catch (SQLException e) { e.printStackTrace(); }
     }
-    private void agregarPrestamo(int id_pelicula, int id_socio) {
+
+    public void rentarPelicula(int id_pelicula, int id_socio) {
+        String sql = "SELECT cinta.id FROM cinta JOIN pelicula ON cinta.id_pelicula = pelicula.id WHERE pelicula.id = ?"
+
+        agregarPrestamo(, id_socio);
+    }
+
+    private void agregarPrestamo(int id_cinta, int id_socio) {
         String sql_prestamo = "INSERT INTO prestamo (id_socio, fecha_prestada) VALUES (?, ?)";
         String sql_pr_cinta = "INSERT INTO prestamo_cinta (id_cinta, id_prestamo) VALUES (?, ?)";
-        
-        try (PreparedStatement statement = conexion.prepareStatement(sql_prestamo)) {
-            statement.setInt(1, id_socio);
-            statement.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
-            
-            statement.executeUpdate();
 
-        } catch (SQLException e) { e.printStackTrace(); }
-        try (PreparedStatement statement = conexion.prepareStatement(sql_pr_cinta)) {
-            statement.setInt(1, id_socio);
-            statement.setInt(1, id_socio);
-            
-            statement.executeUpdate();
+        try {            
+            conexion.setAutoCommit(false);
 
-        } catch (SQLException e) { e.printStackTrace(); }
+            try (PreparedStatement statement = conexion.prepareStatement(sql_prestamo, Statement.RETURN_GENERATED_KEYS)) {
+                statement.setInt(1, id_socio);
+                statement.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
+                statement.executeUpdate();
+            
+                int id_prestamo;
+                try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        id_prestamo = generatedKeys.getInt(1);
+
+                        try (PreparedStatement statement1 = conexion.prepareStatement(sql_pr_cinta)) {
+                            statement1.setInt(1, id_cinta);
+                            statement1.setInt(2, id_prestamo);
+                            statement1.executeUpdate();
+                        }
+                    } else {
+                        throw new SQLException("Fallo crear prestamo.");
+                    }
+                }
+            }
+
+            conexion.commit();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                conexion.setAutoCommit(true);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
     }
 
     public void borrarCuenta(int id) throws SQLException{

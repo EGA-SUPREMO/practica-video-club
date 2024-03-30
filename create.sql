@@ -68,7 +68,7 @@ CREATE TABLE cinta (
 );
 
 CREATE TABLE lista_espera (
-    id INT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     id_pelicula INT,
     id_socio INT,
     fecha DATETIME,
@@ -77,7 +77,7 @@ CREATE TABLE lista_espera (
 );
 
 CREATE TABLE prestamo (
-    id INT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     id_socio INT,
     fecha_prestada DATETIME,
     fecha_devuelta DATETIME,
@@ -85,7 +85,7 @@ CREATE TABLE prestamo (
 );
 
 CREATE TABLE prestamo_cinta (
-    id INT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     id_cinta INT,
     id_prestamo INT,
     FOREIGN KEY (id_cinta) REFERENCES cinta(id) ON DELETE CASCADE,
