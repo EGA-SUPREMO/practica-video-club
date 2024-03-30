@@ -8,6 +8,7 @@ import java.sql.*;
  * -- Inicio de sesion
  * usa obtenerSocio()
  * quitar 90 al socio por id se usa el metodo restarSaldo()
+ * TODO metodo para rentar no existe, haria que si la cintas disponibles son 0, se agrega a la lista de espera, si no, se agrega a la lista de prestamo con fecha devuelta null
  * 
  * -- ver lista de espera, se pide id de socio y se muestra, titulo y estado
  * 
@@ -37,8 +38,8 @@ public class Consulta {
             Pelicula peli = consulta.buscarPorTitulo("The Godfather")[0];
             //Pelicula peli = consulta.buscarPorGenero("Drama")[0];
             //System.out.println(consulta.buscarPorGenero("Drama").length);
-            System.out.println(consulta.obtenerSocio(2)[0]);
-            System.out.println(consulta.obtenerSocio(2)[1]);
+            //System.out.println(consulta.obtenerSocio(2)[0]);
+            /*System.out.println(consulta.obtenerSocio(2)[1]);
             System.out.println(consulta.restarSaldo(2));
             consulta.borrarCuenta(2);
             System.out.println(consulta.obtenerSocio(2));
@@ -47,7 +48,13 @@ public class Consulta {
             System.out.println(peli.actores[0]);
             System.out.println(peli.actores[1]);
             System.out.println(peli.cintas_disponibles);
-
+            */
+            Pelicula[] pelis = consulta.obtenerListaEsperaDeSocio(2);
+            for (Pelicula pelicula : pelis) {
+                System.out.println("Titulo: " + pelicula.titulo);
+                System.out.println("Estado: " + pelicula.estado);
+                System.out.println(); // Add an empty line for separation
+            }
             if (consulta.connection != null) {
                 consulta.connection.close();
             }
@@ -83,6 +90,47 @@ public class Consulta {
             e.printStackTrace();
             return false;
         }
+    }
+
+    // hacerlo por orden, en espera, rentadas, devueltas
+    public Pelicula[] obtenerListaEsperaDeSocio(int idSocio) {
+        Pelicula[] peliculas, peliculasDevueltas = new Pelicula[100], peliculasPorDevolver = new Pelicula[100], peliculasEnEspera = new Pelicula[100];
+        String sql_devueltas = "SELECT p.titulo FROM prestamo pr JOIN prestamo_cinta pc ON pr.id = pc.id_prestamo JOIN cinta c ON pc.id_cinta = c.id JOIN pelicula p ON c.id_pelicula = p.id WHERE pr.id_socio = ? AND pr.fecha_devuelta IS NOT NULL;";
+        String sql_por_devolver = "SELECT p.titulo FROM prestamo pr JOIN prestamo_cinta pc ON pr.id = pc.id_prestamo JOIN cinta c ON pc.id_cinta = c.id JOIN pelicula p ON c.id_pelicula = p.id WHERE pr.id_socio = ? AND pr.fecha_devuelta IS NULL;";
+        String sql_en_espera = "SELECT DISTINCT p.titulo FROM lista_espera le JOIN pelicula p ON le.id_pelicula = p.id WHERE le.id_socio = ?";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql_devueltas)) {
+            statement.setInt(1, idSocio);
+            ResultSet resultSet = statement.executeQuery();
+            
+            peliculasDevueltas = mappearResultSetParaPeliculas(resultSet, "Devuelta");
+        } catch (SQLException e) { e.printStackTrace(); }
+
+        try (PreparedStatement statement = connection.prepareStatement(sql_por_devolver)) {
+            statement.setInt(1, idSocio);
+            ResultSet resultSet = statement.executeQuery();
+            
+            peliculasPorDevolver = mappearResultSetParaPeliculas(resultSet, "Por Devolver");
+        } catch (SQLException e) { e.printStackTrace(); }
+        try (PreparedStatement statement = connection.prepareStatement(sql_en_espera)) {
+            statement.setInt(1, idSocio);
+            ResultSet resultSet = statement.executeQuery();
+            
+            peliculasEnEspera = mappearResultSetParaPeliculas(resultSet, "En Espera");
+        } catch (SQLException e) { e.printStackTrace(); }
+
+        peliculas = new Pelicula[peliculasDevueltas.length + peliculasEnEspera.length + peliculasPorDevolver.length];
+
+        int i = 0;
+        System.arraycopy(peliculasEnEspera, 0, peliculas, i, peliculasEnEspera.length);
+        i += peliculasEnEspera.length;
+
+        System.arraycopy(peliculasPorDevolver, 0, peliculas, i, peliculasPorDevolver.length);
+        i += peliculasPorDevolver.length;
+
+        System.arraycopy(peliculasDevueltas, 0, peliculas, i, peliculasDevueltas.length);
+
+        return peliculas;
     }
 
     public String[] obtenerSocio(int id) {
@@ -123,7 +171,7 @@ public class Consulta {
             statement.setString(1, titulo);
             ResultSet resultSet = statement.executeQuery();
             
-            return mapResultSetToPeliculas(resultSet);
+            return mappearResultSetParaPeliculas(resultSet);
         }
     }
     
@@ -134,7 +182,7 @@ public class Consulta {
             statement.setString(1, genero);
             ResultSet resultSet = statement.executeQuery();
             
-            return mapResultSetToPeliculas(resultSet);
+            return mappearResultSetParaPeliculas(resultSet);
         }
     }
     
@@ -146,7 +194,7 @@ public class Consulta {
             statement.setString(1, nombreActor);
             ResultSet resultSet = statement.executeQuery();
             
-            return mapResultSetToPeliculas(resultSet);
+            return mappearResultSetParaPeliculas(resultSet);
         }
     }
     
@@ -157,7 +205,7 @@ public class Consulta {
             statement.setString(1, nombreDirector);
             ResultSet resultSet = statement.executeQuery();
             
-            return mapResultSetToPeliculas(resultSet);
+            return mappearResultSetParaPeliculas(resultSet);
         }
     }
     private String buscarGeneroPorId(int id) throws SQLException {
@@ -219,7 +267,7 @@ public class Consulta {
         }
     }
     
-    private Pelicula[] mapResultSetToPeliculas(ResultSet resultSet) throws SQLException {
+    private Pelicula[] mappearResultSetParaPeliculas(ResultSet resultSet) throws SQLException {
         Pelicula[] peliculas = new Pelicula[100];
         int index = 0;
         
@@ -234,6 +282,22 @@ public class Consulta {
 
             peliculas[index] = new Pelicula(genero, titulo, actores, director);
             peliculas[index].cintas_disponibles = cintas_disponiblesPorPeliculaId(Integer.parseInt(id_pelicula));
+            index++;
+        }
+        
+        Pelicula[] resultadoFinal = new Pelicula[index];
+        System.arraycopy(peliculas, 0, resultadoFinal, 0, index);
+        
+        return resultadoFinal;
+    }
+    private Pelicula[] mappearResultSetParaPeliculas(ResultSet resultSet, String estado) throws SQLException {
+        Pelicula[] peliculas = new Pelicula[100];
+        int index = 0;
+        
+        while (resultSet.next()) {
+            String titulo = resultSet.getString("titulo");
+            peliculas[index] = new Pelicula("", titulo, null, "");
+            peliculas[index].estado = estado;
             index++;
         }
         
