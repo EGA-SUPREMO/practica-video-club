@@ -35,7 +35,7 @@ public class Consulta {
     // TODO el codigo comentado es para cuando estaba haciendo pruebas, actualmente no aporta nada, decidi no borrarlo por si querian hacer pruebas udts 
     public static void main(String[] args) {
         
-        String url = "jdbc:mariadb://localhost:3306/video_club";
+        String url = "jdbc:mysql://localhost:3306/video_club";
         String usuario = "trabajo";
         String contrasena = "1234";
 
